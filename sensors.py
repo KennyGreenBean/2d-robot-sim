@@ -15,8 +15,8 @@ class Sensor:
     x: float              # mounting position, forward of robot centre (m)
     y: float              # mounting position, left of robot centre (m)
     theta: float          # direction it points, relative to robot forward (rad)
-    range_noise: float    # std dev of distance error (m)
-    bearing_noise: float  # std dev of angle error (rad)
+    range_noise: float | None    # std dev of distance error (m), None = doesn't measure distance
+    bearing_noise: float | None  # std dev of angle error (rad), None = doesn't measure angle
     max_range: float      # farthest it can see (m)
     fov: float            # full width of its view cone (rad)
 
@@ -27,6 +27,9 @@ class Sensor:
 
 SENSORS = [
     Sensor("front", x=0.4, y=0.15, theta=0,
+           range_noise=0.1, bearing_noise=np.radians(2),
+           max_range=6.0, fov=np.radians(90)),
+    Sensor("rear", x=-0.3, y=0.0, theta=np.radians(180),
            range_noise=0.1, bearing_noise=np.radians(2),
            max_range=6.0, fov=np.radians(90)),
 ]

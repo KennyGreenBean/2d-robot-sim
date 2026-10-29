@@ -39,10 +39,3 @@ def wrap_angle(theta):
     # keep  angle in [-pi, pi) eg. 350 deg -> -10 deg
     return (theta + np.pi) % (2.0 * np.pi) - np.pi
 
-def pose_of(T_a_b):
-    # convert matrix to pose for readability
-    x = T_a_b[0, 2]
-    y = T_a_b[1, 2]
-    theta = np.arctan2(T_a_b[1, 0], T_a_b[0, 0])
-    return x, y, theta
-
