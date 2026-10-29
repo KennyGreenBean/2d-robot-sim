@@ -1,7 +1,7 @@
 """
 ekf.py = improve localization data using EKF
 
-guess = (x, y, theta), the robot pose on the map   
+guess = (x, y, theta), the robot pose on the map
 uncertainty = 3x3 covariance: how unsure we are about the guess
 Works with sensors that measure distance, angle, or both.
 """
@@ -56,19 +56,19 @@ def correct(guess, uncertainty, readings):
             jacobian.append(jacobian_full[0])
             noise_std.append(sensor.range_noise)
         if measured_angle is not None:
-            difference.append(wrap_angle(measured_angle - expected_angle)) 
+            difference.append(wrap_angle(measured_angle - expected_angle))
             jacobian.append(jacobian_full[1])
             noise_std.append(sensor.bearing_noise)
-        difference = np.array(difference)                   # actual - expected reading 
-        jacobian = np.array(jacobian)                       # slopes                     
-        sensor_noise = np.diag(np.array(noise_std)**2)      # sensor variance            
+        difference = np.array(difference)                   # actual - expected reading
+        jacobian = np.array(jacobian)                       # slopes
+        sensor_noise = np.diag(np.array(noise_std)**2)      # sensor variance
 
         difference_uncertainty = jacobian @ uncertainty @ jacobian.T + sensor_noise
-        
-        
+
+
         gain = uncertainty @ jacobian.T @ np.linalg.inv(difference_uncertainty)
 
         guess = guess + gain @ difference                   # move the guess
         guess[2] = wrap_angle(guess[2])
-        uncertainty = (np.eye(3) - gain @ jacobian) @ uncertainty 
+        uncertainty = (np.eye(3) - gain @ jacobian) @ uncertainty
     return guess, uncertainty

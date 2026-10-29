@@ -27,10 +27,10 @@ class Sensor:
 
 SENSORS = [
     Sensor("front", x=0.4, y=0.15, theta=0,
-           range_noise=0.1, bearing_noise=np.radians(2),
+           range_noise=0.2, bearing_noise=np.radians(3),
            max_range=6.0, fov=np.radians(90)),
     Sensor("rear", x=-0.3, y=0.0, theta=np.radians(180),
-           range_noise=0.1, bearing_noise=np.radians(2),
+           range_noise=0.2, bearing_noise=np.radians(3),
            max_range=6.0, fov=np.radians(90)),
 ]
 
