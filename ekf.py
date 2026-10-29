@@ -70,5 +70,5 @@ def correct(guess, uncertainty, readings):
 
         guess = guess + gain @ difference                   # move the guess
         guess[2] = wrap_angle(guess[2])
-        uncertainty = (np.eye(3) - gain @ jacobian) @ uncertainty   # we are now more certain
+        uncertainty = (np.eye(3) - gain @ jacobian) @ uncertainty 
     return guess, uncertainty
