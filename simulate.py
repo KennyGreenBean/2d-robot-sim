@@ -1,8 +1,8 @@
 """
 simulate.py = simulate robot localization
 
-The robot stands still at TRUE_POSE. Every sensor in SENSORS takes one set
-of noisy range-bearing readings of the landmarks it can see. The robot only
+Robot stands still at TRUE_POSE. Every sensor in SENSORS takes one set
+of readings of the landmarks it can see. The robot only
 has a rough GUESS of where it is; the EKF will use the readings to fix it.
 """
 
@@ -18,7 +18,7 @@ LANDMARKS = np.array([
 ])
 
 # where the robot really is (x, y, heading) - hidden from the EKF
-TRUE_POSE = np.array([0.0, 3, -.0, 40])
+TRUE_POSE = np.array([0.0, 3.0, np.radians(40)])
 
 
 def expected_reading(pose, landmark, sensor):
@@ -35,16 +35,23 @@ def expected_reading(pose, landmark, sensor):
 def take_readings(pose, noisy=True):
     # every sensor reads every landmark it can see
     # returns a list of (sensor index, landmark index, distance, angle)
+    # distance or angle is None if the sensor doesn't measure it
     readings = []
     for i, sensor in enumerate(SENSORS):
         for j, landmark in enumerate(LANDMARKS):
             d, angle = expected_reading(pose, landmark, sensor)
             if d > sensor.max_range or abs(angle) > sensor.fov / 2:
                 continue   # out of range or outside fov
-            elif noisy:
-                d = d + np.random.normal(0, sensor.range_noise)
-                angle = wrap_angle(angle + np.random.normal(0, sensor.bearing_noise))
-            readings.append((i, j, d, angle))
+            if noisy:
+                if sensor.range_noise is not None:
+                    d = d + np.random.normal(0, sensor.range_noise)
+                if sensor.bearing_noise is not None:
+                    angle = wrap_angle(angle + np.random.normal(0, sensor.bearing_noise))
+            if sensor.range_noise is None:
+                d = None
+            if sensor.bearing_noise is None:
+                angle = None
+            readings.append((i, j, d, angle)) #sensor_num, landmark_num, distance, angle
     return readings
 
 
@@ -54,6 +61,8 @@ if __name__ == "__main__":
     print(f"true pose: {TRUE_POSE[:2]}, {np.degrees(TRUE_POSE[2]):.0f} deg")
     print(f"{len(readings)} readings:")
     for i, j, d, angle in readings:
+        d_text = "-" if d is None else f"{d:.2f} m"
+        angle_text = "-" if angle is None else f"{np.degrees(angle):.1f} deg"
         print(f"  {SENSORS[i].name} sees landmark {j} at {LANDMARKS[j]}: "
-              f"distance {d:.2f} m, angle {np.degrees(angle):.1f} deg")
+              f"distance {d_text}, angle {angle_text}")
     print("simulate.py: checks passed.")
