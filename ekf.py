@@ -49,7 +49,7 @@ def correct(guess, uncertainty, readings):
         expected_distance, expected_angle = expected_reading(guess, landmark, sensor)
         jacobian_full = measurement_jacobian(guess, landmark, sensor)
 
-        # keep only the parts this sensor measures (1 or 2 rows)
+
         difference, jacobian, noise_std = [], [], []
         if measured_distance is not None:
             difference.append(measured_distance - expected_distance)
