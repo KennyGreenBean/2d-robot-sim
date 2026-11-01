@@ -14,8 +14,8 @@ from ekf import correct
 
 # how unsure we are about the first guess (std dev 0.5 m, 0.5 m, 10 deg)
 START_UNCERTAINTY = np.diag([0.5**2, 0.5**2, np.radians(10)**2])
-# "no guess" = so unsure (std dev 1000 m, 1000 rad) that the guess carries no weight
-NO_GUESS_UNCERTAINTY = np.diag([1e6, 1e6, 1e6])
+# returned when the readings can't locate the robot (std dev 1000 m, 1000 rad)
+CANT_LOCATE = np.diag([1e6, 1e6, 1e6])
 
 TRUE_COLOR = "#0b0b0b"
 GUESS_COLOR = "#eb6834"
@@ -34,16 +34,44 @@ def error(pose, truth):
     return position_error, heading_error
 
 
-def locate_without_guess(readings, passes=20):
-    # NOT an EKF: ignores the guess and finds the pose that best fits the readings
-    # alone (weighted least squares). Start at the map centre with no trust in it,
-    # then repeat so each pass re-does the straight-line approximation at the last
-    # answer. With zero trust in the start, the EKF formula reduces to exactly this fit.
-    estimate = np.zeros(3)
-    uncertainty = NO_GUESS_UNCERTAINTY
-    for _ in range(passes):
-        estimate, uncertainty = correct(estimate, NO_GUESS_UNCERTAINTY, readings)
-    return estimate, uncertainty
+def pose_from_readings(readings):
+    # direct mapping, readings -> pose (the guess is never used)
+    # each reading says where its landmark sits in the robot frame
+    seen = np.array([transform_point(SENSORS[i].T_robot_sensor(), [d * np.cos(a), d * np.sin(a)])
+                     for i, _, d, a in readings])
+    on_map = LANDMARKS[[j for _, j, _, _ in readings]]
+    # heading = turn that lines up the landmark layout the robot sees with the map
+    # (each landmark measured from the middle of the group, then summed)
+    seen_c = seen - seen.mean(axis=0)
+    map_c = on_map - on_map.mean(axis=0)
+    theta = np.arctan2(np.sum(seen_c[:, 0] * map_c[:, 1] - seen_c[:, 1] * map_c[:, 0]),
+                       np.sum(seen_c * map_c))
+    # position = middle of the group on the map, minus where the robot saw it (turned by theta)
+    x, y = on_map.mean(axis=0) - make_transform(0, 0, theta)[:2, :2] @ seen.mean(axis=0)
+    return np.array([x, y, theta])
+
+
+def locate_without_guess(readings, step=1e-6):
+    # NOT an EKF: pose straight from the readings, guess ignored
+    # needs distance + angle, and at least 2 different landmarks (1 can't fix heading)
+    readings = [r for r in readings if r[2] is not None and r[3] is not None]
+    if len({j for _, j, _, _ in readings}) < 2:
+        return np.zeros(3), CANT_LOCATE
+    pose = pose_from_readings(readings)
+    # uncertainty: nudge each measured number a little, see how far the pose moves,
+    # then scale by that sensor's noise
+    slopes, noise_std = [], []
+    for k, (i, _, _, _) in enumerate(readings):
+        for which, std in ((2, SENSORS[i].range_noise), (3, SENSORS[i].bearing_noise)):
+            nudged = [list(r) for r in readings]
+            nudged[k][which] += step
+            change = pose_from_readings(nudged) - pose
+            change[2] = wrap_angle(change[2])   
+            slopes.append(change / step)
+            noise_std.append(std)
+    slopes = np.array(slopes).T                     # 3 x (number of measured numbers)
+    uncertainty = slopes @ np.diag(np.array(noise_std)**2) @ slopes.T
+    return pose, uncertainty
 
 
 def pinned_down(uncertainty):
